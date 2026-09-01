@@ -1,0 +1,48 @@
+use sentinel_ipc::{read_frame, write_frame, Command, Envelope, Event, Response};
+use sentinel_service::SentinelService;
+use sentinel_dns_controller::DnsPolicy;
+use sentinel_wireguard_controller::WireGuardProfile;
+use std::{env, io::Write, net::{TcpListener, TcpStream}, sync::{Arc, Mutex}};
+
+fn handle(mut stream: TcpStream, service: Arc<Mutex<SentinelService>>, token: &str) {
+    let request: Result<Envelope,_> = read_frame(&mut stream);
+    let request = match request { Ok(v)=>v, Err(_)=>return };
+    if request.auth_token != token { let _=write_frame(&mut stream,&Response{request_id:request.request_id,event:Event::Error{code:"unauthorized".into(),message:"invalid IPC token".into()}}); return; }
+    let event = match request.command {
+        Command::GetStatus => { let state=service.lock().unwrap().state(); Event::Status{state:format!("{state:?}")} }
+        Command::Connect{profile,dns,endpoint} => { let p=serde_json::from_value::<WireGuardProfile>(profile);let d=serde_json::from_value::<DnsPolicy>(dns);match(p,d){(Ok(p),Ok(d))=>match service.lock().unwrap().connect(&p,&d,&endpoint){Ok(_)=>Event::Status{state:"Connected".into()},Err(e)=>Event::Error{code:"connect_failed".into(),message:e.to_string()}},(Err(e),_)|( _,Err(e))=>Event::Error{code:"invalid_config".into(),message:e.to_string()}} }
+        Command::Disconnect{interface_name} => match service.lock().unwrap().disconnect(&interface_name){Ok(_)=>Event::Status{state:"Disconnected".into()},Err(e)=>Event::Error{code:"disconnect_failed".into(),message:e.to_string()}},
+        Command::Reconnect => { service.lock().unwrap().on_network_change(); Event::Status{state:"Reconnect".into()} }
+        _ => Event::Error{code:"unsupported".into(),message:"command is not enabled in the service runtime yet".into()},
+    };
+    let _=write_frame(&mut stream,&Response{request_id:request.request_id,event});
+    let _=stream.flush();
+}
+
+fn run_ipc(service: Arc<Mutex<SentinelService>>) -> std::io::Result<()> {
+    let addr=env::var("SENTINEL_IPC_LISTEN").unwrap_or_else(|_|"127.0.0.1:39421".into());
+    let token=env::var("SENTINEL_IPC_TOKEN").map_err(|_|std::io::Error::new(std::io::ErrorKind::PermissionDenied,"SENTINEL_IPC_TOKEN is required"))?;
+    let listener=TcpListener::bind(addr)?;
+    for stream in listener.incoming(){match stream{Ok(s)=>{let svc=service.clone();let t=token.clone();std::thread::spawn(move||handle(s,svc,&t));},Err(e)=>eprintln!("IPC accept: {e}")}}
+    Ok(())
+}
+
+#[cfg(windows)]
+fn main(){
+    use std::ffi::OsString;
+    use windows_service::{define_windows_service, service::{ServiceControl,ServiceControlAccept,ServiceExitCode,ServiceState,ServiceStatus,ServiceType}, service_control_handler::{self,ServiceControlHandlerResult}, service_dispatcher};
+    define_windows_service!(ffi_service_main, service_main);
+    fn service_main(_args:Vec<OsString>){let _=service_main_impl();}
+    fn service_main_impl()->Result<(),Box<dyn std::error::Error>>{
+        let (stop_tx,stop_rx)=std::sync::mpsc::channel();
+        let status_handle=service_control_handler::register("SentinelVPN",move|event|{match event{ServiceControl::Stop|ServiceControl::Shutdown=>{let _=stop_tx.send(());ServiceControlHandlerResult::NoError},_=>ServiceControlHandlerResult::NotImplemented}})?;
+        status_handle.set_service_status(ServiceStatus{service_type:ServiceType::OWN_PROCESS,current_state:ServiceState::Running,controls_accepted:ServiceControlAccept::STOP|ServiceControlAccept::SHUTDOWN,exit_code:ServiceExitCode::Win32(0),checkpoint:0,wait_hint:std::time::Duration::default(),process_id:None})?;
+        let svc=Arc::new(Mutex::new(SentinelService::default()));let worker=svc.clone();let join=std::thread::spawn(move||run_ipc(worker));
+        let _=stop_rx.recv(); drop(join);
+        status_handle.set_service_status(ServiceStatus{service_type:ServiceType::OWN_PROCESS,current_state:ServiceState::Stopped,controls_accepted:ServiceControlAccept::empty(),exit_code:ServiceExitCode::Win32(0),checkpoint:0,wait_hint:std::time::Duration::default(),process_id:None})?;Ok(())
+    }
+    if let Err(e)=service_dispatcher::start("SentinelVPN",ffi_service_main){eprintln!("service start failed: {e}")}
+}
+
+#[cfg(not(windows))]
+fn main(){let svc=Arc::new(Mutex::new(SentinelService::default()));if let Err(e)=run_ipc(svc){eprintln!("sentinel-service: {e}");std::process::exit(1)}}
