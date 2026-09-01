@@ -1,0 +1,15 @@
+services:
+  sentinel-server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080/tcp"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - /etc/wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    environment:
+      SENTINEL_LISTEN: ":8080"
+      SENTINEL_ENV: "production"
