@@ -1,0 +1,15 @@
+[package]
+name = "sentinel-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+tracing.workspace = true
+sentinel-vpn-core = { path = "../vpn-core" }
+sentinel-firewall-windows = { path = "../firewall-windows" }
+sentinel-wireguard-controller = { path = "../wireguard-controller" }
+sentinel-dns-controller = { path = "../dns-controller" }
+sentinel-diagnostics = { path = "../diagnostics" }
+sentinel-ipc = { path = "../ipc" }
