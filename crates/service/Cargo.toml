@@ -13,3 +13,6 @@ sentinel-wireguard-controller = { path = "../wireguard-controller" }
 sentinel-dns-controller = { path = "../dns-controller" }
 sentinel-diagnostics = { path = "../diagnostics" }
 sentinel-ipc = { path = "../ipc" }
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.8"
