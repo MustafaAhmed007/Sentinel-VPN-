@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #eef2ff; background: #060914; }
+body { margin: 0; min-width: 360px; background: radial-gradient(circle at 50% -10%, #142044 0, #060914 48%); }
+button { font: inherit; }
+.app-shell { width: min(760px, 100%); min-height: 100vh; margin: auto; padding: 28px; display: grid; align-content: center; gap: 18px; }
+.topbar { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.brand { font-size: 20px; font-weight: 800; letter-spacing: .13em; }
+.brand span { font-weight: 500; letter-spacing: .02em; }
+.subtitle { margin-top: 6px; color: #8f9ab8; font-size: 13px; }
+.status-pill { border: 1px solid #2b3247; border-radius: 999px; padding: 7px 11px; color: #aab2c7; font-size: 12px; }
+.status-pill.ok { border-color: #2d8a63; color: #72e1ae; }
+.status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+.hero-card { border: 1px solid #242b40; border-radius: 28px; padding: 42px 28px; background: rgba(11, 16, 32, .78); box-shadow: 0 18px 70px rgba(0,0,0,.25); text-align: center; }
+.shield { width: 86px; height: 86px; margin: 0 auto 16px; border: 1px solid #39425c; border-radius: 28px; display: grid; place-items: center; font-size: 34px; color: #b6c2df; }
+.state { font-size: 34px; font-weight: 800; letter-spacing: -.03em; }
+.endpoint { margin-top: 7px; color: #8d98b4; font-size: 14px; }
+.connect { margin-top: 28px; min-width: 180px; padding: 13px 22px; border: 0; border-radius: 14px; background: #e7ecfb; color: #09101f; font-weight: 800; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+.connect:hover { transform: translateY(-1px); opacity: .92; }
+.metrics, .health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.metrics article, .health { border: 1px solid #20273a; border-radius: 18px; padding: 17px; background: rgba(10,15,29,.6); }
+.metrics article { display: grid; gap: 4px; }
+.metrics strong { font-size: 21px; }
+.metrics span, .health span { color: #808ba7; font-size: 12px; }
+.health-grid { grid-template-columns: repeat(4, 1fr); }
+.health { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.health strong { font-size: 11px; letter-spacing: .08em; }
+footer { display: flex; justify-content: space-between; color: #68728a; font-size: 11px; padding: 4px 2px; }
+@media (max-width: 640px) { .app-shell { padding: 18px; } .health-grid { grid-template-columns: repeat(2, 1fr); } footer { flex-direction: column; gap: 5px; } }
