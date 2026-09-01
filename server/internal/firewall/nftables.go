@@ -1,37 +1,6 @@
 package firewall
-
-import (
-    "fmt"
-    "os/exec"
-    "strconv"
-)
-
-// Runner isolates privileged nftables execution so it can be replaced by a
-// fake in tests. The server never interpolates untrusted shell fragments.
-type Runner struct {
-    Binary string
-}
-
-func New() Runner { return Runner{Binary: "nft"} }
-
-func (r Runner) ApplyPortForward(publicPort uint16, wgAddress string, clientPort uint16) error {
-    if publicPort == 0 || clientPort == 0 || wgAddress == "" {
-        return fmt.Errorf("invalid NAT parameters")
-    }
-    // Arguments are passed directly to exec.Command; no shell is involved.
-    // The deployment must provision the Sentinel-owned table/chain first.
-    args := []string{"add", "rule", "ip", "nat", "prerouting", "tcp", "dport", strconv.Itoa(int(publicPort)), "dnat", "to", wgAddress + ":" + strconv.Itoa(int(clientPort))}
-    if out, err := exec.Command(r.Binary, args...).CombinedOutput(); err != nil {
-        return fmt.Errorf("nft add port forward: %w: %s", err, string(out))
-    }
-    return nil
-}
-
-func (r Runner) RemovePortForward(publicPort uint16) error {
-    if publicPort == 0 { return fmt.Errorf("invalid public port") }
-    // Production deployments should replace this with handle-based deletion
-    // from the Sentinel-owned chain so unrelated administrator rules remain
-    // untouched. This method intentionally fails closed if nft is unavailable.
-    _ = publicPort
-    return nil
-}
+import("fmt";"os/exec";"strconv";"strings")
+type Runner struct{Binary string}
+func New()Runner{return Runner{Binary:"nft"}}
+func(r Runner)ApplyPortForward(publicPort uint16,wgAddress string,clientPort uint16)error{if publicPort==0||clientPort==0||wgAddress==""{return fmt.Errorf("invalid NAT parameters")};comment:="sentinel-port-"+strconv.Itoa(int(publicPort));for _,proto:=range []string{"udp","tcp"}{args:=[]string{"add","rule","ip","nat","prerouting",proto,"dport",strconv.Itoa(int(publicPort)),"dnat","to",wgAddress+":"+strconv.Itoa(int(clientPort)),"comment",comment};if out,err:=exec.Command(r.Binary,args...).CombinedOutput();err!=nil{if proto=="tcp"{_ = r.RemovePortForward(publicPort)};return fmt.Errorf("nft add %s port forward: %w: %s",proto,err,string(out))}};return nil}
+func(r Runner)RemovePortForward(publicPort uint16)error{if publicPort==0{return fmt.Errorf("invalid public port")};out,err:=exec.Command(r.Binary,"-a","list","chain","ip","nat","prerouting").CombinedOutput();if err!=nil{return fmt.Errorf("nft list prerouting: %w: %s",err,string(out))};needle:="sentinel-port-"+strconv.Itoa(int(publicPort));for _,line:=range strings.Split(string(out),"\n"){if !strings.Contains(line,needle){continue};fields:=strings.Fields(line);for i:=0;i<len(fields)-1;i++{if fields[i]=="handle"{if _,e:=strconv.Atoi(fields[i+1]);e==nil{if del,er:=exec.Command(r.Binary,"delete","rule","ip","nat","prerouting","handle",fields[i+1]).CombinedOutput();er!=nil{return fmt.Errorf("nft delete port forward: %w: %s",er,string(del))}}}}};return nil}
