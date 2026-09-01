@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+  "apps/desktop/src-tauri",
+  "crates/vpn-core",
+  "crates/firewall-windows",
+  "crates/wireguard-controller",
+  "crates/dns-controller",
+  "crates/network-monitor",
+  "crates/profile-manager",
+  "crates/diagnostics",
+  "crates/ipc",
+  "crates/service",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["MustafaAhmed007"]
+license = "MIT"
+repository = "https://github.com/MustafaAhmed007/Sentinel-VPN-"
+
+[workspace.dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
