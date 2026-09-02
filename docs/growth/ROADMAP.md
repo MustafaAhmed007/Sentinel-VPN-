@@ -1,6 +1,6 @@
 # Sentinel-VPN Ω Public Roadmap
 
-The roadmap is intentionally tied to evidence and release gates.
+The roadmap is tied to evidence and release gates. A checkbox means the repository contains the implementation or automation; it does not mean production security has been independently certified.
 
 ## Phase 1 — Foundation
 
@@ -39,13 +39,14 @@ The roadmap is intentionally tied to evidence and release gates.
 
 ## Phase 4 — Growth engine
 
-- [ ] GitHub Pages technical documentation
-- [ ] Search-focused architecture guides
-- [ ] Reproducible benchmark suite
-- [ ] Contributor onboarding challenges
-- [ ] Public security test reports
+- [x] Search-focused technical documentation site source
+- [x] Search-focused architecture guides
+- [x] CI benchmark smoke workflow
+- [x] Contributor onboarding templates
+- [ ] Public real-device security test reports
 - [ ] Release demo videos
 - [ ] Translation/community documentation
+- [ ] Enable GitHub Pages deployment at repository settings level
 
 ## Phase 5 — Commercial layers
 
