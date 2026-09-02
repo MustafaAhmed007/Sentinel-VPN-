@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability reporting
+    url: https://github.com/MustafaAhmed007/Sentinel-VPN-/security/advisories/new
+    about: Do not publish unpatched security vulnerabilities as public issues.
+  - name: Documentation and release checklist
+    url: https://github.com/MustafaAhmed007/Sentinel-VPN-/tree/main/docs
+    about: Read the technical documentation before opening a support issue.
