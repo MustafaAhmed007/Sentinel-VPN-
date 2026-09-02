@@ -1,55 +1,32 @@
-# Sentinel-VPN Ω Share Kit
+# Share kit
 
-Use these assets as starting points for launch posts, release notes, community announcements, and technical demos.
+## Short
 
-## One-line positioning
+Sentinel-VPN Ω is an open-source, self-hosted WireGuard VPN for Windows built around a simple rule: if the VPN is not verified, normal Internet traffic stays blocked.
 
-Sentinel-VPN Ω is a security-first, self-hosted WireGuard VPN platform for Windows with fail-closed firewall enforcement, DNS/IPv6 leak protection, diagnostics, and a self-hosted Linux VPS control plane.
+## Technical
 
-## Technical hook
+> Building a Windows VPN? Sentinel explores a privileged Rust networking core, authenticated IPC, WireGuard lifecycle management, DNS/IPv6 verification, and a self-hosted Go + nftables control plane.
 
-`Connected` is not enough. Sentinel is designed around the invariant: `VPN_NOT_VERIFIED -> INTERNET_TRAFFIC = BLOCKED`.
+## Launch post
 
-## Demo sequence
+**Sentinel-VPN Ω is now easier to evaluate.**
 
-1. Start disconnected.
-2. Show firewall/security state.
-3. Connect to a real WireGuard endpoint.
-4. Show handshake and route verification.
-5. Show DNS/IPv6 checks.
-6. Interrupt the tunnel.
-7. Demonstrate that ordinary traffic remains blocked.
-8. Restore the tunnel and show verified recovery.
+The project combines WireGuard with a fail-closed Windows policy model, a privileged Rust service, DNS/IPv6 verification, diagnostics, and a self-hosted Linux VPS control plane.
 
-Never fabricate throughput, latency, leak-test, or security results.
+The important part is not the feature list. It is the evidence loop: failure → regression test → documentation → next release.
 
-## Release post structure
+Repository: https://github.com/MustafaAhmed007/Sentinel-VPN-
 
-- What changed
-- Why it matters
-- Security impact
-- Before/after behavior
-- Reproduction commands
-- Known limitations
-- Link to the repository
-- Invitation for Windows/VPS testers
+## Demo script
 
-## Community flywheel
+1. Show disconnected state.
+2. Connect and show firewall transition.
+3. Show WireGuard handshake verification.
+4. Show DNS/route diagnostics.
+5. Disable the network or tunnel.
+6. Show return to blocked state.
+7. Reconnect and show verification before unlock.
+8. Show the exact test report.
 
-A useful contribution should generate another useful artifact: a benchmark becomes a performance note; a bug becomes a regression test; a deployment issue becomes a guide; a security review becomes a threat-model improvement.
-
-## Suggested audiences
-
-- self-hosters
-- WireGuard users
-- Windows power users
-- privacy/security engineers
-- homelab operators
-- Linux VPS administrators
-- P2P users needing controlled inbound ports
-- Rust and Tauri developers
-- networking students and practitioners
-
-## Ethical growth rule
-
-No fake stars, engagement manipulation, astroturfing, misleading security claims, copied competitor content, or spam. Growth comes from useful engineering evidence, reproducible demos, and community participation.
+Never stage a fake “leak test” or present unverified behavior as production security.

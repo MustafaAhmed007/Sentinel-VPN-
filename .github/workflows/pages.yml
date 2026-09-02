@@ -10,15 +10,39 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
+  build-site:
+    name: Build documentation site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate static site
+        shell: bash
+        run: |
+          test -f docs/site/index.html
+          test -f docs/site/robots.txt
+          test -f docs/site/sitemap.xml
+          test -f docs/site/404.html
+          grep -q 'application/ld+json' docs/site/index.html
+          grep -q 'rel="canonical"' docs/site/index.html
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp -R docs/site/. _site/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-vpn-site
+          path: _site
+
   deploy:
+    name: Deploy to GitHub Pages
+    if: ${{ vars.SENTINEL_ENABLE_PAGES == 'true' }}
+    needs: build-site
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -26,12 +50,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Prepare site
-        run: |
-          mkdir -p _site
-          cp -R docs/site/. _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: docs/site
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -1,106 +1,38 @@
-# Sentinel-VPN Ω — SEO & Organic Growth System
+# SEO system
 
-This document turns repository growth into an executable system rather than keyword stuffing.
+Sentinel should earn search traffic by publishing the exact technical evidence that people need when building, debugging or evaluating self-hosted VPN infrastructure.
 
-## Search positioning
+## Search pillars
 
-Primary topic clusters:
+| Pillar | Search intent | Proof asset |
+|---|---|---|
+| Windows VPN kill switch | How to prevent leaks | failure-injection test |
+| Self-hosted WireGuard | How to own the stack | deployment guide |
+| DNS leak protection | How to verify DNS | repeatable leak report |
+| IPv6 VPN leaks | How to handle IPv6 | IPv4/IPv6 matrix |
+| WireGuard VPS | How to operate infrastructure | deployment checklist |
+| nftables P2P | How to forward ports safely | lease/revocation tests |
+| Rust VPN client | How to build native networking software | architecture + code |
+| VPN diagnostics | How to prove state | diagnostic report |
 
-- self-hosted WireGuard VPN for Windows
-- open source Windows VPN client
-- WireGuard kill switch
-- fail-closed VPN firewall
-- Windows VPN DNS leak protection
-- Windows IPv6 VPN leak protection
-- self-hosted VPN server
-- WireGuard VPS
-- WireGuard P2P port forwarding
-- nftables WireGuard port forwarding
-- privacy-focused VPN architecture
-- Rust VPN client
-- Tauri VPN application
+## Rules
 
-## Content ladder
+1. One page answers one concrete question.
+2. Use natural terminology; do not stuff keywords into headings or metadata.
+3. Every technical claim should point to code, a test, a benchmark, or a clearly labeled design decision.
+4. Prefer diagrams, tables, commands and failure cases over generic marketing copy.
+5. Keep canonical URLs stable.
+6. Update pages when implementation changes materially.
+7. Never claim “no leaks” without a reproducible test scope and date.
 
-Publish technical, evidence-based pages in this order:
-
-1. Why a VPN kill switch should fail closed
-2. How to build a self-hosted WireGuard VPN on a VPS
-3. WireGuard on Windows: routing, DNS, and IPv6 leak protection
-4. Windows VPN firewall architecture with WFP
-5. WireGuard P2P port forwarding with nftables
-6. How to test a VPN kill switch with failure injection
-7. Self-hosted VPN vs commercial VPN: architecture and trust boundaries
-8. Rust vs Go for a VPN control plane
-9. How Sentinel-VPN Ω separates UI and privileged networking
-10. Sentinel-VPN Ω security threat model and release gates
-
-Every article should contain original diagrams, reproducible commands, test evidence, links to the relevant source files, and a clear link to the canonical repository.
-
-## Search-quality rules
-
-- Write for a real technical question, not a keyword list.
-- Put the exact problem in the page title and first paragraph.
-- Use one canonical URL per topic.
-- Cross-link related technical pages.
-- Prefer measurements and source-backed claims over marketing adjectives.
-- Never claim anonymity, zero logging, leak-proof behavior, or production security without evidence.
-- Keep project naming consistent: `Sentinel-VPN Ω`.
-
-## Conversion loop
-
-Search result → technical guide → runnable repository → issue/discussion → contribution → improvement → new guide.
-
-## Viral loop
-
-Demo/test result → screenshot or short technical clip → social post → repository → reproducible test → user report → merged improvement → changelog/release → new content.
-
-The project should make sharing useful evidence easier than sharing generic promotional copy.
-
-## Metrics
-
-Track monthly:
-
-- unique repository visitors
-- clone count
-- stars
-- forks
-- issue quality
-- pull requests from new contributors
-- release downloads
-- documentation page visits
-- search impressions/clicks when a web property is connected
-- conversion from content to repository visits
-
-Do not optimize for stars alone. Optimize for qualified users who build, test, report, contribute, or deploy.
-
-## Growth flywheel
+## Distribution loop
 
 ```text
-REAL FEATURE
-   ↓
-REPRODUCIBLE TEST
-   ↓
-TECHNICAL DOCUMENTATION
-   ↓
-SEARCH DISCOVERY
-   ↓
-REPOSITORY VISIT
-   ↓
-TRY / STAR / FORK
-   ↓
-ISSUE / PR / FEEDBACK
-   ↓
-BETTER FEATURE
-   └──────────────→ repeat
+new feature → test → evidence → guide → README link → community post → issue/PR → improved feature
 ```
 
-## Monetization ladder
+## Conversion path
 
-1. Free MIT self-hosted core.
-2. Paid setup automation and managed VPS provisioning.
-3. Power-user multi-server management.
-4. Hosted control plane.
-5. Team policy, device management, audit, and support tiers.
+Search visitor → technical answer → repository → quick start → successful local run → star/fork → issue/PR → retained contributor.
 
-The open-source core remains the acquisition engine; paid layers remove operational complexity.
+The primary CTA is **useful evidence**, not an artificial scarcity or engagement trick.

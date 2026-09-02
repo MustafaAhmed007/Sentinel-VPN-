@@ -1,27 +1,24 @@
-## What changed?
+## Summary
 
-<!-- Describe the user-visible or system-level change. -->
+- [ ] I explained the user-visible or architectural problem.
+- [ ] I described the root cause.
+- [ ] I added/updated regression coverage where practical.
+- [ ] I documented security impact and limitations.
 
-## Why does it matter?
+## Validation
 
-<!-- Security, reliability, performance, usability, developer experience, or growth impact. -->
+- [ ] `cargo check --workspace`
+- [ ] `cargo test --workspace`
+- [ ] `cargo fmt --all -- --check`
+- [ ] `npm run build`
+- [ ] `go test ./...`
+- [ ] `go vet ./...`
+- [ ] `go build ./cmd/sentinel-server`
 
-## Verification
+## Networking/security changes
 
-- [ ] Rust format/check/tests pass
-- [ ] Desktop build passes
-- [ ] Go tests/vet/build pass
-- [ ] Relevant integration or adversarial tests added/updated
-- [ ] No secrets or private keys included
-
-## Security impact
-
-<!-- State explicitly whether firewall, DNS, routing, IPC, privileges, WireGuard, P2P, or key handling changed. -->
+If applicable, describe the affected state machine, firewall behavior, DNS behavior, routes, WireGuard lifecycle, IPC boundary, or P2P forwarding rules.
 
 ## Evidence
 
-<!-- Logs, screenshots, benchmark numbers, or reproduction steps. Never include credentials. -->
-
-## Release notes
-
-<!-- One concise sentence suitable for generated release notes. -->
+Link to logs, benchmark results, screenshots, or reproducible test steps. Remove secrets before posting.

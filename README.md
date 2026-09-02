@@ -1,357 +1,242 @@
 # Sentinel-VPN Ω
 
-[![CI](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml/badge.svg)](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![WireGuard](https://img.shields.io/badge/VPN-WireGuard-88171A.svg)](https://www.wireguard.com/)
+> **Security-first, self-hosted WireGuard VPN for Windows — built around a fail-closed security invariant.**
 
-**Security-first, self-hosted WireGuard VPN for Windows and personal infrastructure.**
+[![CI](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml/badge.svg)](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml) [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![WireGuard](https://img.shields.io/badge/data%20plane-WireGuard-88171A.svg)](https://www.wireguard.com/) [![Rust](https://img.shields.io/badge/core-Rust-orange.svg)](https://www.rust-lang.org/) [![Go](https://img.shields.io/badge/control%20plane-Go-00ADD8.svg)](https://go.dev/)
 
-Sentinel-VPN Ω is an open-source VPN platform built around a simple security invariant:
+Sentinel-VPN Ω is an open-source VPN system for people who want to own the client, networking policy, VPS control plane, and security evidence instead of outsourcing the entire trust boundary to a hosted VPN provider.
 
-```text
-VPN_NOT_VERIFIED -> INTERNET_TRAFFIC = BLOCKED
-```
+The project is intentionally **system-centric**: the Windows UI is not the security boundary. A privileged Rust service owns networking policy, WireGuard lifecycle, DNS policy, firewall state, IPC authorization, and verification. A Linux VPS control plane manages peers and bounded P2P port-forwarding state.
 
-It combines a lightweight **Tauri + React** desktop application, a privileged **Rust Windows service**, fail-closed **Windows Firewall/WFP** enforcement, native **WireGuard** lifecycle control, DNS and IPv6 leak protection, diagnostics, reconnect handling, and a self-hosted **Go + Linux VPS** control plane with **nftables** P2P port forwarding.
-
-> **Security status:** the source-level implementation foundation is complete, but a source tree is not a security certification. Stable release requires real Windows 10/11, Linux VPS, leak, failure-injection, sleep/wake, network-transition, installer, and P2P validation. Sentinel implements no custom cryptography.
-
-## Why Sentinel-VPN Ω?
-
-Most VPN discussions stop at **“the tunnel is connected.”** Sentinel is designed around a stronger question: **“Has the complete network security path been verified?”**
-
-The intended lifecycle is:
+## The security invariant
 
 ```text
-CONNECT
-  ↓
-LOCK DOWN
-  ↓
-START WIREGUARD
-  ↓
-WAIT FOR HANDSHAKE
-  ↓
-VERIFY ROUTING + DNS + IPv4 + IPv6
-  ↓
-ALLOW NORMAL TRAFFIC
-  ↓
-CONNECTED / PROTECTED
+VPN_NOT_VERIFIED  ->  INTERNET_TRAFFIC = BLOCKED
 ```
 
-If verification fails, the system moves toward a fail-safe state rather than treating a running tunnel process as proof of protection.
+A tunnel process existing is not treated as proof that the network is protected. Sentinel is designed to move through explicit states and only expose normal traffic after the tunnel, route, DNS, and policy checks pass.
 
-## Core capabilities
+> **Important:** source code, CI, and architecture are not a security certification. Stable production releases require real Windows 10/11, VPS, DNS/IPv6 leak, sleep/wake, network-transition, installer, reconnect, and P2P validation.
 
-| Capability | Purpose |
-|---|---|
-| Self-hosted WireGuard VPN | Run your own VPN instead of depending on a mandatory provider |
-| Windows desktop client | Lightweight Tauri + React native application |
-| Fail-closed kill switch | Block ordinary traffic until the VPN path is verified |
-| Windows firewall/WFP policy | Enforce the security boundary in the privileged service |
-| WireGuard lifecycle | Install, remove, inspect and verify tunnel state |
-| DNS protection | Apply VPN DNS policy and prevent silent physical-adapter fallback |
-| IPv4/IPv6 protection | Treat routing and IPv6 escape paths as explicit release gates |
-| Network recovery | Detect transitions and return through a verification path |
-| Diagnostics | Make security state measurable rather than cosmetic |
-| Self-hosted VPS | Go control plane for Linux infrastructure |
-| P2P port forwarding | Authenticated, bounded public-port leases through nftables |
-| Privilege separation | UI remains unprivileged; service owns network policy |
-| MIT licensed core | Reusable open-source foundation |
+## Why Sentinel exists
+
+Most VPN clients optimize for convenience first. Sentinel optimizes for a different question:
+
+**“What is the network allowed to do right now, and what evidence proves it?”**
+
+That leads to a few design choices:
+
+- **Fail closed:** ordinary traffic is blocked until VPN protection is verified.
+- **Privileged core:** security-sensitive operations live outside the browser-like desktop UI.
+- **WireGuard data plane:** proven modern VPN transport rather than a custom cryptographic protocol.
+- **Self-hosted infrastructure:** Linux VPS control plane can be operated by the user.
+- **Leak-oriented diagnostics:** DNS, IPv6, route, handshake, firewall, and transition checks are first-class concepts.
+- **Reproducible evidence:** releases should publish tests and benchmarks rather than only screenshots.
 
 ## Architecture
 
 ```text
-                    SENTINEL-VPN Ω
-
-       ┌─────────────────────────────────┐
-       │ Tauri + React Desktop UI        │
-       │ status · connect · config       │
-       └───────────────┬─────────────────┘
-                       │ authenticated IPC
-                       ▼
-       ┌─────────────────────────────────┐
-       │ Rust Privileged Windows Service │
-       │                                 │
-       │ state machine                   │
-       │ firewall/WFP                    │
-       │ WireGuard lifecycle             │
-       │ DNS + route verification        │
-       │ diagnostics + recovery          │
-       └──────────┬──────────┬───────────┘
-                  │          │
-             WireGuard      WFP/DNS
-                  │          │
-                  └────┬─────┘
-                       ▼
-                Encrypted UDP
-                       │
-                       ▼
-       ┌─────────────────────────────────┐
-       │ Linux VPS                       │
-       │ Go API · WireGuard · nftables  │
-       │ peers · leases · P2P NAT       │
-       └───────────────┬─────────────────┘
-                       │
-                       ▼
-                    Internet
+┌──────────────────────────── Windows ────────────────────────────┐
+│                                                                 │
+│  React + Tauri UI                                               │
+│       │ authenticated local IPC                                 │
+│       ▼                                                         │
+│  Privileged Rust service                                        │
+│       ├── firewall / fail-closed policy                         │
+│       ├── WireGuard lifecycle                                   │
+│       ├── DNS + IPv6 policy                                     │
+│       ├── network transition monitoring                         │
+│       ├── profile management                                    │
+│       └── diagnostics / verification                            │
+│                         │                                       │
+│                         │ WireGuard                              │
+└─────────────────────────┼───────────────────────────────────────┘
+                          ▼
+                 ┌──────────────────┐
+                 │ Linux VPS        │
+                 │ Go control plane │
+                 │ WireGuard        │
+                 │ nftables P2P     │
+                 └──────────────────┘
 ```
 
-## Repository structure
+## What is included
 
-```text
-Sentinel-VPN-/
-├── apps/desktop/                 # Tauri + React client
-├── crates/
-│   ├── vpn-core/                 # Security state machine
-│   ├── firewall-windows/         # Windows fail-closed policy
-│   ├── wireguard-controller/     # WireGuard lifecycle boundary
-│   ├── dns-controller/           # DNS policy boundary
-│   ├── network-monitor/          # Network transition model
-│   ├── profile-manager/           # Profile contracts
-│   ├── diagnostics/              # Security diagnostics
-│   ├── ipc/                      # Authenticated IPC protocol
-│   └── service/                  # Privileged Windows service
-├── server/                       # Go VPS control plane
-├── deploy/windows/               # Service installer/uninstaller
-├── tests/                        # Integration/security/P2P suites
-├── docs/
-│   ├── security/                 # Threat model
-│   ├── growth/                   # SEO, roadmap and share system
-│   └── site/                     # SEO-ready project landing page
-├── .github/
-│   ├── workflows/                # CI, release and Pages
-│   └── ISSUE_TEMPLATE/           # Structured community intake
-├── Cargo.toml
-├── LICENSE                       # MIT
-├── SECURITY.md
-├── CONTRIBUTING.md
-└── CHANGELOG.md
-```
+| Layer | Purpose | Stack |
+|---|---|---|
+| Desktop UI | User controls, state, diagnostics | React, TypeScript, Vite |
+| Desktop shell | Native application boundary | Tauri 2 |
+| Privileged core | Security policy and orchestration | Rust |
+| VPN transport | Encrypted tunnel | WireGuard |
+| Windows enforcement | Fail-closed firewall policy | Windows Firewall / WFP-backed rules |
+| DNS policy | VPN DNS configuration and restoration | Windows networking |
+| Control plane | Peer/server lifecycle | Go |
+| P2P forwarding | Bounded port leases and NAT | nftables |
+| Verification | Regression and adversarial checks | Rust/Go/CI |
+| Documentation site | Search-oriented technical content | Static HTML / GitHub Pages |
 
-## Technology stack
+## Search-intent guides
 
-| Layer | Technology |
-|---|---|
-| Desktop | Tauri 2, React, TypeScript, Vite |
-| Client | Rust |
-| Firewall | Windows Firewall / Windows Filtering Platform |
-| VPN | WireGuard |
-| IPC | Authenticated framed local transport |
-| Server | Go |
-| Linux networking | WireGuard + nftables |
-| Automation | GitHub Actions + Dependabot |
-| License | MIT |
+These are deliberately useful technical pages, not keyword-stuffed landing pages:
+
+- [Self-hosted WireGuard VPN on Windows](docs/site/guides/self-hosted-wireguard-windows.html)
+- [How a fail-closed Windows VPN kill switch should work](docs/site/guides/windows-vpn-kill-switch.html)
+- [DNS and IPv6 leak protection](docs/site/guides/dns-ipv6-leak-protection.html)
+- [WireGuard VPS + nftables P2P forwarding](docs/site/guides/wireguard-vps-nftables-p2p.html)
 
 ## Security model
 
-1. **No custom cryptography.** WireGuard remains the cryptographic data plane.
-2. **Fail closed.** Ordinary Internet traffic is blocked before tunnel verification.
-3. **Narrow endpoint exception.** The physical network is permitted to reach the configured VPN endpoint during establishment.
-4. **Verified tunnel only.** Handshake, route, DNS, IPv4 and IPv6 conditions are checked before normal traffic is allowed.
-5. **Privilege separation.** The desktop UI is not the authority for privileged network state.
-6. **Secret hygiene.** Private keys and IPC credentials are not intended for logs or source control.
-7. **No mandatory telemetry.** The self-hosted architecture does not require a telemetry account.
-8. **Scoped recovery.** Sentinel-owned firewall policy is removed/restored without globally resetting unrelated firewall configuration.
-9. **P2P boundaries.** Public ports are authenticated, bounded, reversible and lease-based.
+Sentinel treats the following as separate facts:
 
-See [`SECURITY.md`](SECURITY.md) and [`docs/security/threat-model.md`](docs/security/threat-model.md).
+1. WireGuard is configured.
+2. The tunnel interface exists.
+3. A recent handshake exists.
+4. The expected route is active.
+5. DNS policy is applied.
+6. IPv6 behavior is acceptable.
+7. Firewall policy prevents bypass.
+8. The combined state is safe enough to expose normal traffic.
 
-## P2P / port forwarding
+This decomposition is important because a VPN can be “connected” at one layer while still leaking at another.
 
-WireGuard does not inherently provide incoming port forwarding. Sentinel's VPS control plane addresses this with a bounded lease model:
+See [SECURITY.md](SECURITY.md) and the [release checklist](docs/release-checklist.md).
 
-```text
-client peer
-   ↓
-authenticated API
-   ↓
-allocate public port
-   ↓
-nftables TCP + UDP DNAT
-   ↓
-WireGuard peer
-   ↓
-application such as qBittorrent
-```
-
-The intended lifecycle is:
+## Repository map
 
 ```text
-allocate → validate → install → renew/expire → revoke
+apps/desktop/                 React + Tauri application
+crates/vpn-core/              shared state and orchestration primitives
+crates/firewall-windows/      Windows fail-closed firewall policy
+crates/wireguard-controller/  WireGuard lifecycle
+crates/dns-controller/        DNS policy and restoration
+crates/network-monitor/       network transition detection
+crates/profile-manager/       profiles and configuration
+crates/diagnostics/           verification and diagnostics
+crates/ipc/                   authenticated local IPC protocol
+crates/service/               privileged Windows service
+server/                       Go Linux control plane + P2P forwarding
+docs/                         architecture, security, growth and web content
+.github/                      CI, release, contribution and dependency automation
 ```
-
-This is useful for self-hosted services and P2P workloads that need controlled inbound connectivity without exposing arbitrary host ports.
-
-## Diagnostics and adversarial testing
-
-A production candidate should demonstrate behavior under failure, not merely compile.
-
-Required scenarios include:
-
-- WireGuard process termination
-- Sentinel service termination
-- VPN endpoint failure
-- Wi-Fi/Ethernet transitions
-- Windows sleep/wake
-- DNS failure and fallback attempts
-- IPv4 leak attempts
-- IPv6 leak attempts
-- torrent client started before VPN
-- VPN termination during active P2P traffic
-- Windows restart while connected
-- VPS restart and NAT recovery
-
-The release checklist is [`docs/release-checklist.md`](docs/release-checklist.md).
 
 ## Development
 
-### Windows client
+### Rust
 
-```powershell
-cargo fmt --all -- --check
+```bash
 cargo check --workspace
 cargo test --workspace
-npm --prefix apps/desktop install
-npm --prefix apps/desktop run build
+cargo fmt --all -- --check
 ```
 
-### Linux VPS server
+### Desktop
+
+```bash
+cd apps/desktop
+npm install
+npm run build
+```
+
+### Go control plane
 
 ```bash
 cd server
+go mod tidy
 go test ./...
 go vet ./...
 go build ./cmd/sentinel-server
 ```
 
-### Windows service
+## Growth engine: useful work compounds
 
-From an elevated PowerShell session after building the service binary:
-
-```powershell
-.\deploy\windows\install-service.ps1
-```
-
-The installer generates a random IPC credential and restricts its storage to SYSTEM and local Administrators.
-
-## Community and contribution
-
-The fastest route to a better VPN is reproducible evidence.
-
-Good contributions include:
-
-- Windows compatibility reports
-- leak-test results
-- performance benchmarks
-- VPS deployment guides
-- WireGuard interoperability reports
-- security reviews
-- regression tests
-- translations
-- documentation and diagrams
-- integrations and automation examples
-
-Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## Growth engine
-
-Sentinel is designed to grow through useful engineering artifacts rather than artificial engagement:
+Sentinel is designed to grow through technical proof rather than hype:
 
 ```text
 FEATURE
   ↓
 REPRODUCIBLE TEST
   ↓
+BENCHMARK / FAILURE REPORT
+  ↓
 TECHNICAL GUIDE / DEMO
   ↓
 SEARCH + COMMUNITY DISCOVERY
   ↓
-REPOSITORY
+REPOSITORY VISIT
   ↓
 TRY / STAR / FORK
   ↓
 ISSUE / PR / BENCHMARK
   ↓
 BETTER FEATURE
-  └──────────────→ repeat
+  └──────────────────────────────↺
 ```
 
-The project includes an SEO/content system and public roadmap in [`docs/growth/SEO.md`](docs/growth/SEO.md) and [`docs/growth/ROADMAP.md`](docs/growth/ROADMAP.md), plus a launch/share kit in [`docs/growth/SHARE-KIT.md`](docs/growth/SHARE-KIT.md).
+The growth system lives in:
 
-## Documentation site
+- [SEO strategy](docs/growth/SEO.md)
+- [Growth roadmap](docs/growth/ROADMAP.md)
+- [Share kit](docs/growth/SHARE-KIT.md)
+- [Content matrix](docs/growth/CONTENT-MATRIX.md)
+- [Metrics model](docs/growth/METRICS.md)
 
-An SEO-ready static landing page is included under `docs/site/` and can be deployed with the repository's GitHub Pages workflow. It targets legitimate search intent around self-hosted WireGuard VPNs, Windows VPN kill switches, DNS/IPv6 leak protection, WireGuard VPS deployments, and nftables P2P forwarding.
+## Contribution loop
 
-## Production release standard
+The highest-value contributions are not limited to code. Useful contributions include:
 
-```text
-BUILD
-  ↓
-UNIT TEST
-  ↓
-INTEGRATION TEST
-  ↓
-FAILURE INJECTION
-  ↓
-IPv4 / IPv6 / DNS LEAK TEST
-  ↓
-P2P TEST
-  ↓
-SLEEP / WAKE
-  ↓
-NETWORK TRANSITION
-  ↓
-SECURITY REVIEW
-  ↓
-SIGNED INSTALLER
-  ↓
-REAL WINDOWS DEVICE + REAL VPS
-  ↓
-STABLE RELEASE
-```
+- reproducible leak tests
+- Windows network-transition reports
+- VPS deployment notes
+- benchmark data
+- WireGuard interoperability reports
+- documentation improvements
+- security review
+- bug fixes and regression tests
 
-A green GitHub Actions build is necessary but not sufficient for a VPN security release.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
 
-## Self-improvement loop
+## Release philosophy
 
-```text
-CONNECT
-  ↓
-MEASURE handshake · latency · packet loss · throughput · leaks · reconnects
-  ↓
-DIAGNOSE
-  ↓
-OPTIMIZE
-  ↓
-REGRESSION TEST
-  ↓
-RELEASE
-  ↓
-COLLECT NEW EVIDENCE
-  └──────────────→ repeat
-```
+Every release should answer four questions:
+
+1. **What changed?**
+2. **What was tested?**
+3. **What remains unverified?**
+4. **How can another person reproduce the evidence?**
+
+A green CI badge means the repository passed automated checks. It does not mean Windows kernel networking, DNS leakage, firewall behavior, or P2P forwarding has been independently audited.
 
 ## Product and monetization path
 
-The open-source core is the acquisition and trust layer:
+The open-source core remains useful on its own. A sustainable product layer can grow around it without turning the security boundary into a black box:
 
-- **Free / self-hosted:** MIT core + personal VPS
-- **Power user:** multi-server management, advanced diagnostics and P2P tooling
-- **Managed:** automated VPS provisioning and hosted control plane
-- **B2B:** device policy, team networking, audit capabilities and support
+- managed self-hosted control plane
+- paid deployment and migration support
+- team policy management
+- fleet diagnostics and evidence dashboards
+- enterprise support / SLA
+- hardened release channels and signed distribution
 
-Paid layers should remove operational complexity without closing the core security architecture.
+See [docs/product/monetization.md](docs/product/monetization.md).
 
-## Roadmap
+## Feedback and self-improvement
 
-See [`docs/growth/ROADMAP.md`](docs/growth/ROADMAP.md).
+The project should continuously convert failures into assets:
+
+```text
+FAILURE → ROOT CAUSE → REGRESSION TEST → DOCUMENTATION → RELEASE GATE
+```
+
+That is the long-term moat: every real failure should make the next release harder to break.
 
 ## License
 
-Sentinel-VPN Ω is released under the **MIT License**. See [`LICENSE`](LICENSE). Third-party dependencies retain their respective licenses.
+Sentinel-VPN Ω is released under the [MIT License](LICENSE).
 
-## Security
+## Security disclosure
 
-Please do not publish an unpatched security vulnerability as a public issue. Follow [`SECURITY.md`](SECURITY.md).
+Do not publish exploitable vulnerabilities as ordinary issues. Follow [SECURITY.md](SECURITY.md).
 
 ---
 
-**If you find the architecture useful, test it, report what happens, and share reproducible evidence. That is how Sentinel-VPN Ω compounds.**
+**If this project is useful, a star helps discovery — but a reproducible test, issue, or PR helps the system improve.**
