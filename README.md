@@ -1,161 +1,209 @@
 # Sentinel-VPN Ω
 
-**A security-first, self-hosted WireGuard VPN platform for Windows and personal infrastructure.**
+[![CI](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml/badge.svg)](https://github.com/MustafaAhmed007/Sentinel-VPN-/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![WireGuard](https://img.shields.io/badge/VPN-WireGuard-88171A.svg)](https://www.wireguard.com/)
 
-Sentinel-VPN Ω combines a lightweight Tauri desktop application, a privileged Rust Windows service, fail-closed Windows firewall enforcement, native WireGuard control, DNS/IPv6 leak protection, self-healing connectivity, diagnostics, and a minimal Go server control plane.
+**Security-first, self-hosted WireGuard VPN for Windows and personal infrastructure.**
 
-> **Implementation status:** v1 implementation foundation is complete in the repository. The privileged networking path is deliberately fail-closed and must still be exercised on a real Windows host and VPS before a stable security release. No custom cryptography is implemented.
-
-## Objective
-
-Provide a personal VPN system in which the security invariant is:
+Sentinel-VPN Ω is an open-source VPN platform built around a simple security invariant:
 
 ```text
 VPN_NOT_VERIFIED -> INTERNET_TRAFFIC = BLOCKED
 ```
 
-The UI never receives SYSTEM privileges. The privileged service owns network state and firewall policy. WireGuard supplies the cryptographic tunnel; Sentinel owns orchestration, policy, diagnostics, lifecycle, and deployment.
+It combines a lightweight **Tauri + React** desktop application, a privileged **Rust Windows service**, fail-closed **Windows Firewall/WFP** enforcement, native **WireGuard** lifecycle control, DNS and IPv6 leak protection, diagnostics, reconnect handling, and a self-hosted **Go + Linux VPS** control plane with **nftables** P2P port forwarding.
+
+> **Security status:** the source-level implementation foundation is complete, but a source tree is not a security certification. Stable release requires real Windows 10/11, Linux VPS, leak, failure-injection, sleep/wake, network-transition, installer, and P2P validation. Sentinel implements no custom cryptography.
+
+## Why Sentinel-VPN Ω?
+
+Most VPN discussions stop at **“the tunnel is connected.”** Sentinel is designed around a stronger question: **“Has the complete network security path been verified?”**
+
+The intended lifecycle is:
+
+```text
+CONNECT
+  ↓
+LOCK DOWN
+  ↓
+START WIREGUARD
+  ↓
+WAIT FOR HANDSHAKE
+  ↓
+VERIFY ROUTING + DNS + IPv4 + IPv6
+  ↓
+ALLOW NORMAL TRAFFIC
+  ↓
+CONNECTED / PROTECTED
+```
+
+If verification fails, the system moves toward a fail-safe state rather than treating a running tunnel process as proof of protection.
+
+## Core capabilities
+
+| Capability | Purpose |
+|---|---|
+| Self-hosted WireGuard VPN | Run your own VPN instead of depending on a mandatory provider |
+| Windows desktop client | Lightweight Tauri + React native application |
+| Fail-closed kill switch | Block ordinary traffic until the VPN path is verified |
+| Windows firewall/WFP policy | Enforce the security boundary in the privileged service |
+| WireGuard lifecycle | Install, remove, inspect and verify tunnel state |
+| DNS protection | Apply VPN DNS policy and prevent silent physical-adapter fallback |
+| IPv4/IPv6 protection | Treat routing and IPv6 escape paths as explicit release gates |
+| Network recovery | Detect transitions and return through a verification path |
+| Diagnostics | Make security state measurable rather than cosmetic |
+| Self-hosted VPS | Go control plane for Linux infrastructure |
+| P2P port forwarding | Authenticated, bounded public-port leases through nftables |
+| Privilege separation | UI remains unprivileged; service owns network policy |
+| MIT licensed core | Reusable open-source foundation |
 
 ## Architecture
 
 ```text
-Tauri + React UI
-       │ authenticated local IPC
-       ▼
-Rust Windows Service
-       ├── state machine
-       ├── WireGuard controller
-       ├── Windows firewall/WFP policy
-       ├── DNS policy
-       ├── route/handshake verification
-       └── diagnostics
-       │
-       ▼
-Encrypted WireGuard UDP
-       │
-       ▼
-Go Linux VPS Control Plane
-       ├── peer management
-       ├── authenticated API
-       ├── nftables NAT
-       └── P2P port leases
-       │
-       ▼
-Internet
+                    SENTINEL-VPN Ω
+
+       ┌─────────────────────────────────┐
+       │ Tauri + React Desktop UI        │
+       │ status · connect · config       │
+       └───────────────┬─────────────────┘
+                       │ authenticated IPC
+                       ▼
+       ┌─────────────────────────────────┐
+       │ Rust Privileged Windows Service │
+       │                                 │
+       │ state machine                   │
+       │ firewall/WFP                    │
+       │ WireGuard lifecycle             │
+       │ DNS + route verification        │
+       │ diagnostics + recovery          │
+       └──────────┬──────────┬───────────┘
+                  │          │
+             WireGuard      WFP/DNS
+                  │          │
+                  └────┬─────┘
+                       ▼
+                Encrypted UDP
+                       │
+                       ▼
+       ┌─────────────────────────────────┐
+       │ Linux VPS                       │
+       │ Go API · WireGuard · nftables  │
+       │ peers · leases · P2P NAT       │
+       └───────────────┬─────────────────┘
+                       │
+                       ▼
+                    Internet
 ```
 
-## Repository
+## Repository structure
 
 ```text
 Sentinel-VPN-/
-├── apps/desktop/              # Tauri + React application
+├── apps/desktop/                 # Tauri + React client
 ├── crates/
-│   ├── vpn-core/              # Security state machine
-│   ├── firewall-windows/      # Fail-closed Windows policy
-│   ├── wireguard-controller/  # Native WireGuard lifecycle
-│   ├── dns-controller/        # Windows DNS policy
-│   ├── network-monitor/       # Network transition model
-│   ├── profile-manager/       # Profile contracts
-│   ├── diagnostics/           # Security diagnostics
-│   ├── ipc/                   # Authenticated IPC protocol
-│   └── service/               # Privileged Windows service
-├── server/                    # Go control plane + nftables
-├── deploy/windows/            # Windows service install/uninstall
-├── tests/                     # Integration/security/P2P tests
-├── docs/                      # Architecture/security/release docs
-├── .github/                   # CI, release, Dependabot, CODEOWNERS
+│   ├── vpn-core/                 # Security state machine
+│   ├── firewall-windows/         # Windows fail-closed policy
+│   ├── wireguard-controller/     # WireGuard lifecycle boundary
+│   ├── dns-controller/           # DNS policy boundary
+│   ├── network-monitor/          # Network transition model
+│   ├── profile-manager/           # Profile contracts
+│   ├── diagnostics/              # Security diagnostics
+│   ├── ipc/                      # Authenticated IPC protocol
+│   └── service/                  # Privileged Windows service
+├── server/                       # Go VPS control plane
+├── deploy/windows/               # Service installer/uninstaller
+├── tests/                        # Integration/security/P2P suites
+├── docs/
+│   ├── security/                 # Threat model
+│   ├── growth/                   # SEO, roadmap and share system
+│   └── site/                     # SEO-ready project landing page
+├── .github/
+│   ├── workflows/                # CI, release and Pages
+│   └── ISSUE_TEMPLATE/           # Structured community intake
 ├── Cargo.toml
-├── LICENSE                    # MIT
+├── LICENSE                       # MIT
 ├── SECURITY.md
+├── CONTRIBUTING.md
 └── CHANGELOG.md
 ```
 
-## Stack
+## Technology stack
 
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Desktop | Tauri 2 + React/TypeScript | Lightweight native UI/tray |
-| Client core | Rust | Privileged orchestration |
-| Firewall | Windows Firewall/WFP | Fail-closed enforcement |
-| VPN | WireGuard | Standard cryptographic data plane |
-| Local IPC | Authenticated framed TCP on loopback | UI/service separation |
-| Local state | SQLite-ready profile architecture | Profiles/preferences |
-| Server | Go | Peer/API/P2P management |
-| Linux NAT | nftables | P2P port forwarding |
-| CI/CD | GitHub Actions | Build/test/security/package |
+| Layer | Technology |
+|---|---|
+| Desktop | Tauri 2, React, TypeScript, Vite |
+| Client | Rust |
+| Firewall | Windows Firewall / Windows Filtering Platform |
+| VPN | WireGuard |
+| IPC | Authenticated framed local transport |
+| Server | Go |
+| Linux networking | WireGuard + nftables |
+| Automation | GitHub Actions + Dependabot |
+| License | MIT |
 
 ## Security model
 
-1. No custom cryptography.
-2. Lock down before normal Internet traffic is permitted.
-3. The physical network is allowed to reach only the configured VPN endpoint during tunnel establishment.
-4. The WireGuard interface becomes the only normal data path after lockdown.
-5. DNS is assigned to the VPN interface.
-6. Handshake freshness and routing are checked before the connection is reported as protected.
-7. The UI remains unprivileged.
-8. Private keys are not written to application logs.
-9. Telemetry is not mandatory.
-10. Firewall recovery removes only Sentinel-owned policy and does not reset the user's entire firewall configuration.
+1. **No custom cryptography.** WireGuard remains the cryptographic data plane.
+2. **Fail closed.** Ordinary Internet traffic is blocked before tunnel verification.
+3. **Narrow endpoint exception.** The physical network is permitted to reach the configured VPN endpoint during establishment.
+4. **Verified tunnel only.** Handshake, route, DNS, IPv4 and IPv6 conditions are checked before normal traffic is allowed.
+5. **Privilege separation.** The desktop UI is not the authority for privileged network state.
+6. **Secret hygiene.** Private keys and IPC credentials are not intended for logs or source control.
+7. **No mandatory telemetry.** The self-hosted architecture does not require a telemetry account.
+8. **Scoped recovery.** Sentinel-owned firewall policy is removed/restored without globally resetting unrelated firewall configuration.
+9. **P2P boundaries.** Public ports are authenticated, bounded, reversible and lease-based.
 
-## P2P / torrenting
+See [`SECURITY.md`](SECURITY.md) and [`docs/security/threat-model.md`](docs/security/threat-model.md).
 
-WireGuard itself does not provide incoming port forwarding. Sentinel's VPS control plane allocates an authenticated external port and installs a reversible nftables DNAT mapping to the WireGuard peer.
+## P2P / port forwarding
 
-```text
-qBittorrent → WireGuard → public VPS port → nftables DNAT → VPN peer
-```
-
-Leases are bounded and expire. Revocation removes the Sentinel-owned NAT rules.
-
-## Diagnostics
-
-The target diagnostic report verifies:
+WireGuard does not inherently provide incoming port forwarding. Sentinel's VPS control plane addresses this with a bounded lease model:
 
 ```text
-WireGuard handshake
-Default IPv4 route
-IPv6 policy
-DNS policy
-Firewall lockdown
-Endpoint reachability
-MTU
-NAT/P2P port
-Kill-switch behaviour
+client peer
+   ↓
+authenticated API
+   ↓
+allocate public port
+   ↓
+nftables TCP + UDP DNAT
+   ↓
+WireGuard peer
+   ↓
+application such as qBittorrent
 ```
 
-A connection is not considered protected merely because a tunnel process exists.
+The intended lifecycle is:
 
-## Adversarial release gates
-
-- kill WireGuard → Internet remains blocked
-- kill Sentinel service → Internet remains blocked
-- switch Wi-Fi/Ethernet → locked until verified reconnect
-- sleep/wake → locked, reconnect, verify
-- DNS failure → no physical-adapter fallback
-- IPv4/IPv6 leak attempt → blocked
-- VPN endpoint unavailable → no Internet
-- qBittorrent starts before VPN → no network path
-- VPN terminates during torrent → torrent traffic stops
-
-See [`docs/release-checklist.md`](docs/release-checklist.md).
-
-## Clean-room implementation policy
-
-Existing open-source projects such as WireGuard, wg-easy, Gluetun, and Amnezia are reference/standards sources only. Sentinel's application code, state machine, firewall orchestration, UX, server API, diagnostics, and deployment logic are independently implemented.
-
-## Windows deployment
-
-After building the service binary, an elevated PowerShell session can install it:
-
-```powershell
-.\deploy\windows\install-service.ps1
+```text
+allocate → validate → install → renew/expire → revoke
 ```
 
-The installer creates a random 256-bit IPC credential and restricts the credential directory to SYSTEM and local Administrators. Uninstalling removes Sentinel-owned firewall rules without resetting unrelated Windows Firewall policy.
+This is useful for self-hosted services and P2P workloads that need controlled inbound connectivity without exposing arbitrary host ports.
+
+## Diagnostics and adversarial testing
+
+A production candidate should demonstrate behavior under failure, not merely compile.
+
+Required scenarios include:
+
+- WireGuard process termination
+- Sentinel service termination
+- VPN endpoint failure
+- Wi-Fi/Ethernet transitions
+- Windows sleep/wake
+- DNS failure and fallback attempts
+- IPv4 leak attempts
+- IPv6 leak attempts
+- torrent client started before VPN
+- VPN termination during active P2P traffic
+- Windows restart while connected
+- VPS restart and NAT recovery
+
+The release checklist is [`docs/release-checklist.md`](docs/release-checklist.md).
 
 ## Development
 
-### Client
+### Windows client
 
 ```powershell
 cargo fmt --all -- --check
@@ -165,7 +213,7 @@ npm --prefix apps/desktop install
 npm --prefix apps/desktop run build
 ```
 
-### Server
+### Linux VPS server
 
 ```bash
 cd server
@@ -174,32 +222,136 @@ go vet ./...
 go build ./cmd/sentinel-server
 ```
 
-## Production-readiness rule
+### Windows service
 
-Compilation is not equivalent to a security release. A stable release requires real Windows and VPS testing:
+From an elevated PowerShell session after building the service binary:
+
+```powershell
+.\deploy\windows\install-service.ps1
+```
+
+The installer generates a random IPC credential and restricts its storage to SYSTEM and local Administrators.
+
+## Community and contribution
+
+The fastest route to a better VPN is reproducible evidence.
+
+Good contributions include:
+
+- Windows compatibility reports
+- leak-test results
+- performance benchmarks
+- VPS deployment guides
+- WireGuard interoperability reports
+- security reviews
+- regression tests
+- translations
+- documentation and diagrams
+- integrations and automation examples
+
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Growth engine
+
+Sentinel is designed to grow through useful engineering artifacts rather than artificial engagement:
 
 ```text
-BUILD → TEST → FAILURE INJECTION → LEAK TEST → P2P TEST
-→ SLEEP/WAKE → NETWORK TRANSITION → SECURITY REVIEW → INSTALLER → V1
+FEATURE
+  ↓
+REPRODUCIBLE TEST
+  ↓
+TECHNICAL GUIDE / DEMO
+  ↓
+SEARCH + COMMUNITY DISCOVERY
+  ↓
+REPOSITORY
+  ↓
+TRY / STAR / FORK
+  ↓
+ISSUE / PR / BENCHMARK
+  ↓
+BETTER FEATURE
+  └──────────────→ repeat
 ```
+
+The project includes an SEO/content system and public roadmap in [`docs/growth/SEO.md`](docs/growth/SEO.md) and [`docs/growth/ROADMAP.md`](docs/growth/ROADMAP.md), plus a launch/share kit in [`docs/growth/SHARE-KIT.md`](docs/growth/SHARE-KIT.md).
+
+## Documentation site
+
+An SEO-ready static landing page is included under `docs/site/` and can be deployed with the repository's GitHub Pages workflow. It targets legitimate search intent around self-hosted WireGuard VPNs, Windows VPN kill switches, DNS/IPv6 leak protection, WireGuard VPS deployments, and nftables P2P forwarding.
+
+## Production release standard
+
+```text
+BUILD
+  ↓
+UNIT TEST
+  ↓
+INTEGRATION TEST
+  ↓
+FAILURE INJECTION
+  ↓
+IPv4 / IPv6 / DNS LEAK TEST
+  ↓
+P2P TEST
+  ↓
+SLEEP / WAKE
+  ↓
+NETWORK TRANSITION
+  ↓
+SECURITY REVIEW
+  ↓
+SIGNED INSTALLER
+  ↓
+REAL WINDOWS DEVICE + REAL VPS
+  ↓
+STABLE RELEASE
+```
+
+A green GitHub Actions build is necessary but not sufficient for a VPN security release.
 
 ## Self-improvement loop
 
 ```text
-CONNECT → MEASURE → DIAGNOSE → OPTIMIZE → REGRESSION TEST → RELEASE
+CONNECT
+  ↓
+MEASURE handshake · latency · packet loss · throughput · leaks · reconnects
+  ↓
+DIAGNOSE
+  ↓
+OPTIMIZE
+  ↓
+REGRESSION TEST
+  ↓
+RELEASE
+  ↓
+COLLECT NEW EVIDENCE
+  └──────────────→ repeat
 ```
 
-## Monetization path
+## Product and monetization path
 
-- Personal: self-hosted single VPS
-- Power user: multi-server/P2P/advanced diagnostics
-- Managed: hosted control plane and automated VPS provisioning
-- B2B: team VPN, device policies, audit logs, private networking
+The open-source core is the acquisition and trust layer:
+
+- **Free / self-hosted:** MIT core + personal VPS
+- **Power user:** multi-server management, advanced diagnostics and P2P tooling
+- **Managed:** automated VPS provisioning and hosted control plane
+- **B2B:** device policy, team networking, audit capabilities and support
+
+Paid layers should remove operational complexity without closing the core security architecture.
+
+## Roadmap
+
+See [`docs/growth/ROADMAP.md`](docs/growth/ROADMAP.md).
 
 ## License
 
-**MIT License.** See [`LICENSE`](LICENSE). Third-party dependencies retain their upstream licenses.
+Sentinel-VPN Ω is released under the **MIT License**. See [`LICENSE`](LICENSE). Third-party dependencies retain their respective licenses.
 
 ## Security
 
-See [`SECURITY.md`](SECURITY.md) for threat-model scope and vulnerability reporting.
+Please do not publish an unpatched security vulnerability as a public issue. Follow [`SECURITY.md`](SECURITY.md).
+
+---
+
+**If you find the architecture useful, test it, report what happens, and share reproducible evidence. That is how Sentinel-VPN Ω compounds.**
