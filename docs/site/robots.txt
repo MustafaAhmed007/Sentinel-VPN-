@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mustafaahmed007.github.io/Sentinel-VPN-/sitemap.xml
