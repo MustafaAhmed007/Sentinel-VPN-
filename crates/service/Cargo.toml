@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
 sentinel-vpn-core = { path = "../vpn-core" }
 sentinel-firewall-windows = { path = "../firewall-windows" }
