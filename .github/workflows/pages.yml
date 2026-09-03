@@ -11,12 +11,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build-site:
     name: Build documentation site
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate static site
         shell: bash
         run: |
@@ -30,9 +34,8 @@ jobs:
         run: |
           mkdir -p _site
           cp -R docs/site/. _site/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
-          name: sentinel-vpn-site
           path: _site
 
   deploy:
@@ -40,7 +43,6 @@ jobs:
     if: ${{ vars.SENTINEL_ENABLE_PAGES == 'true' }}
     needs: build-site
     permissions:
-      contents: read
       pages: write
       id-token: write
     environment:
@@ -48,10 +50,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/site
+      - uses: actions/configure-pages@v6
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
