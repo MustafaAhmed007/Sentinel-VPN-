@@ -15,7 +15,10 @@ pub enum NetworkEvent {
 pub struct NetworkMonitor;
 
 impl NetworkMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
+
     pub fn classify(interface_changed: bool, link_up: bool) -> NetworkEvent {
         match (interface_changed, link_up) {
             (true, true) => NetworkEvent::InterfaceChanged,
