@@ -25,10 +25,14 @@ pub struct MemoryProfileStore {
 }
 
 impl ProfileStore for MemoryProfileStore {
-    fn list(&self) -> Result<Vec<ServerProfile>> { Ok(self.profiles.clone()) }
+    fn list(&self) -> Result<Vec<ServerProfile>> {
+        Ok(self.profiles.clone())
+    }
+
     fn get(&self, id: &str) -> Result<Option<ServerProfile>> {
         Ok(self.profiles.iter().find(|p| p.id == id).cloned())
     }
+
     fn save(&mut self, profile: ServerProfile) -> Result<()> {
         if let Some(existing) = self.profiles.iter_mut().find(|p| p.id == profile.id) {
             *existing = profile;
@@ -37,6 +41,7 @@ impl ProfileStore for MemoryProfileStore {
         }
         Ok(())
     }
+
     fn remove(&mut self, id: &str) -> Result<()> {
         self.profiles.retain(|p| p.id != id);
         Ok(())
