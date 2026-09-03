@@ -14,7 +14,9 @@ pub enum ConnectionState {
 }
 
 impl Default for ConnectionState {
-    fn default() -> Self { Self::Disconnected }
+    fn default() -> Self {
+        Self::Disconnected
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,7 +35,10 @@ pub enum Transition {
 #[derive(Debug, thiserror::Error)]
 pub enum StateError {
     #[error("invalid transition from {from:?} using {event:?}")]
-    Invalid { from: ConnectionState, event: Transition },
+    Invalid {
+        from: ConnectionState,
+        event: Transition,
+    },
 }
 
 impl ConnectionState {
@@ -70,8 +75,13 @@ pub struct SecuritySnapshot {
 
 impl SecuritySnapshot {
     pub fn verified(&self) -> bool {
-        self.tunnel_up && self.handshake_ok && self.route_ok && self.dns_ok
-            && self.ipv4_ok && self.ipv6_ok && self.firewall_locked
+        self.tunnel_up
+            && self.handshake_ok
+            && self.route_ok
+            && self.dns_ok
+            && self.ipv4_ok
+            && self.ipv6_ok
+            && self.firewall_locked
     }
 }
 
@@ -103,7 +113,9 @@ mod tests {
             Transition::WireGuardStarted,
             Transition::HandshakeStarted,
             Transition::VerificationFailed,
-        ] { state = state.transition(event).unwrap(); }
+        ] {
+            state = state.transition(event).unwrap();
+        }
         assert_eq!(state, ConnectionState::Failsafe);
     }
 }
