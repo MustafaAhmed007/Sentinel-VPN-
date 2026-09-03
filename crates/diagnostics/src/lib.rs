@@ -14,7 +14,9 @@ pub struct DiagnosticReport {
 
 impl DiagnosticReport {
     pub fn score(&self) -> u8 {
-        if self.checks.is_empty() { return 0; }
+        if self.checks.is_empty() {
+            return 0;
+        }
         let passed = self.checks.iter().filter(|c| c.passed).count();
         ((passed * 100) / self.checks.len()) as u8
     }
@@ -40,25 +42,32 @@ pub fn baseline_checks() -> DiagnosticReport {
         "Kill-switch simulation",
     ];
     DiagnosticReport {
-        checks: names.into_iter().map(|name| CheckResult {
-            name: name.to_owned(),
-            passed: false,
-            detail: "not executed".to_owned(),
-        }).collect(),
+        checks: names
+            .into_iter()
+            .map(|name| CheckResult {
+                name: name.to_owned(),
+                passed: false,
+                detail: "not executed".to_owned(),
+            })
+            .collect(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn empty_report_is_not_verified() {
         assert!(!DiagnosticReport::default().verified());
     }
+
     #[test]
     fn all_checks_pass_gives_full_score() {
         let mut r = baseline_checks();
-        for c in &mut r.checks { c.passed = true; }
+        for c in &mut r.checks {
+            c.passed = true;
+        }
         assert_eq!(r.score(), 100);
         assert!(r.verified());
     }
