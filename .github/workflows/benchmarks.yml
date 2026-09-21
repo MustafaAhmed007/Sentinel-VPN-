@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p evidence
           printf '%s\n' '{"type":"ci-benchmark-smoke","status":"passed","note":"Use real-device reports for network performance and leak measurements."}' > evidence/benchmark-smoke.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: benchmark-smoke
           path: evidence/benchmark-smoke.json
